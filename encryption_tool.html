@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Greek Music Cipher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #F0EDE6;
+    --staff: #1a1a1a;
+    --ink: #1a1a1a;
+    --accent: #2c5f8a;
+    --muted: #888070;
+    --card: #fff9f0;
+    --note-fill: #1a1a1a;
+    --beam: #1a1a1a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Space Mono', monospace;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  header {
+    text-align: center;
+    padding: 52px 20px 32px;
+    border-bottom: 1px solid #c8c0b0;
+  }
+
+  header h1 {
+    font-family: 'IM Fell English', serif;
+    font-size: clamp(2rem, 5vw, 3.6rem);
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  header p {
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 0;
+  }
+
+  .io-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  @media (max-width: 640px) {
+    .io-row { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid #d4ccbc;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .panel-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid #e0d8cc;
+    background: #f7f3ea;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    border: none;
+    background: transparent;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.95rem;
+    padding: 14px;
+    resize: vertical;
+    color: var(--ink);
+    outline: none;
+    line-height: 1.6;
+  }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+    align-items: center;
+  }
+
+  button {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 10px 22px;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  button:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  button.ghost {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  button.ghost:hover {
+    background: var(--ink);
+    color: var(--bg);
+  }
+
+  /* ── Score output ── */
+  #score-output {
+    background: var(--card);
+    border: 1px solid #d4ccbc;
+    border-radius: 2px;
+    padding: 28px 20px;
+    min-height: 80px;
+  }
+
+  #score-output .score-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px 20px;
+    align-items: flex-end;
+  }
+
+  .cipher-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .cipher-block .glyph {
+    font-family: 'IM Fell English', serif;
+    font-size: 1.05rem;
+    color: var(--muted);
+    line-height: 1;
+  }
+
+  .cipher-block svg {
+    display: block;
+  }
+
+  /* Alphabet grid */
+  .section-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #d0c8b8;
+  }
+
+  .alpha-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .alpha-card {
+    background: var(--card);
+    border: 1px solid #ddd5c5;
+    border-radius: 2px;
+    padding: 10px 8px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .alpha-card .letter {
+    font-family: 'IM Fell English', serif;
+    font-size: 1.15rem;
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  .placeholder-msg {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Greek Music Cipher</h1>
+  <p>Encode text as musical notation · α → ω</p>
+</header>
+
+<div class="main">
+
+  <div class="io-row">
+    <div class="panel">
+      <div class="panel-label">Input — Greek or Latin text</div>
+      <textarea id="txt-in" placeholder="Type Greek (αβγ…) or Latin (abg…) letters here…" spellcheck="false"></textarea>
+    </div>
+    <div class="panel">
+      <div class="panel-label">Decoded — back to letters</div>
+      <textarea id="txt-back" readonly placeholder="Letters will appear here after encoding…"></textarea>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="btn-encode">Encode →</button>
+    <button class="ghost" id="btn-clear">Clear</button>
+    <button class="ghost" id="btn-download" style="display:none;">↓ Download PNG</button>
+    <span style="font-size:0.7rem;color:var(--muted);margin-left:auto;">Non-letter characters are passed through unchanged</span>
+  </div>
+
+  <div id="score-output">
+    <div class="placeholder-msg">Your encoded score will appear here…</div>
+  </div>
+
+  <div style="margin-top:48px;">
+    <div class="section-title">Cipher key — all 24 letters</div>
+    <div class="alpha-grid" id="alpha-grid"></div>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// NOTE SYSTEM
+// Each note is {p: pitch, d: duration, beam: bool}
+// Pitches (treble clef, middle C = C4):
+//   C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5
+// Staff lines: E4 G4 B4 D5 F5  (bottom→top)
+// Spaces:      F4 A4 C5 E5
+//
+// Duration: 4=quarter, 8=eighth, 2=half
+// ─────────────────────────────────────────────────────────────
+
+// Map pitch name → staff position (0 = bottom ledger C4, up by step)
+const PITCH_Y = {
+  C4: 8, D4: 7, E4: 6, F4: 5, G4: 4, A4: 3, B4: 2, C5: 1, D5: 0, E5: -1, F5: -2, G5: -3
+};
+
+// Each cipher entry: array of {p, d} note objects
+// Derived by reading pitches from the image left→right
+// d=4 quarter, d=8 eighth (beamed pairs), d=2 half
+const CIPHER = {
+  // 1. Α — C4 E4 G4 C5  (ascending arpeggio, quarters)
+  α: [{p:'C4',d:4},{p:'E4',d:4},{p:'G4',d:4},{p:'C5',d:4}],
+  // 2. Β — C5 B4 G4 E4 (descending, beamed 8ths + quarter)
+  β: [{p:'C5',d:8},{p:'B4',d:8},{p:'G4',d:8},{p:'E4',d:4}],
+  // 3. Γ — E4 G4 E4 C4
+  γ: [{p:'E4',d:4},{p:'G4',d:4},{p:'E4',d:4},{p:'C4',d:4}],
+  // 4. Δ — G4 C5 B4 G4 (beam 8th pair + descend)
+  δ: [{p:'G4',d:8},{p:'C5',d:8},{p:'B4',d:4},{p:'G4',d:4}],
+  // 5. Ε — D4 F4 A4 C5
+  ε: [{p:'D4',d:4},{p:'F4',d:4},{p:'A4',d:4},{p:'C5',d:4}],
+  // 6. Ζ — C4 E4 G4 B4 (beamed run upward)
+  ζ: [{p:'C4',d:8},{p:'E4',d:8},{p:'G4',d:8},{p:'B4',d:8}],
+  // 7. Η — G4 A4 B4 C5 (gentle ascent, last two slurred down)
+  η: [{p:'G4',d:4},{p:'A4',d:4},{p:'B4',d:4},{p:'C5',d:4}],
+  // 8. Θ — E4 G4 A4 B4 (beamed ending)
+  θ: [{p:'E4',d:4},{p:'G4',d:4},{p:'A4',d:8},{p:'B4',d:8}],
+  // 9. Ι — C4 D4 E4 G4 F4
+  ι: [{p:'C4',d:4},{p:'D4',d:4},{p:'E4',d:4},{p:'G4',d:4}],
+  // 10. Κ — E4 G4 A4 G4 (beam end)
+  κ: [{p:'E4',d:4},{p:'G4',d:4},{p:'A4',d:8},{p:'G4',d:8}],
+  // 11. Λ — C5 B4 A4 G4 (descending with grace)
+  λ: [{p:'C5',d:4},{p:'B4',d:4},{p:'A4',d:4},{p:'G4',d:4}],
+  // 12. Μ — G4 A4 (half) beamed pair
+  μ: [{p:'G4',d:8},{p:'A4',d:8},{p:'B4',d:2}],
+  // 13. Ν — D4 E4 F4 G4
+  ν: [{p:'D4',d:4},{p:'E4',d:4},{p:'F4',d:4},{p:'G4',d:4}],
+  // 14. Ξ — F4 A4 C5 E5 (up, beam)
+  ξ: [{p:'F4',d:4},{p:'A4',d:4},{p:'C5',d:8},{p:'E5',d:8}],
+  // 15. Ο — C5 B4 G4 E4
+  ο: [{p:'C5',d:4},{p:'B4',d:4},{p:'G4',d:4},{p:'E4',d:4}],
+  // 16. Π — B4 C5 (beam) A4 G4
+  π: [{p:'B4',d:8},{p:'C5',d:8},{p:'A4',d:4},{p:'G4',d:4}],
+  // 17. Ρ — G4 A4 beam + C5 D5
+  ρ: [{p:'G4',d:8},{p:'A4',d:8},{p:'C5',d:4},{p:'D5',d:4}],
+  // 18. Σ — E4 G4 beamed run down C4
+  σ: [{p:'E4',d:8},{p:'G4',d:8},{p:'F4',d:8},{p:'C4',d:8}],
+  // 19. Τ — C4 E4 G4 E4
+  τ: [{p:'C4',d:4},{p:'E4',d:4},{p:'G4',d:4},{p:'E4',d:4}],
+  // 20. Υ — D4 F4 beam + A4 G4
+  υ: [{p:'D4',d:8},{p:'F4',d:8},{p:'A4',d:4},{p:'G4',d:4}],
+  // 21. Φ — C4 E4 beam up G4 B4
+  φ: [{p:'C4',d:8},{p:'E4',d:8},{p:'G4',d:4},{p:'B4',d:4}],
+  // 22. Χ — E5 D5 B4 G4 (fast descent, beamed)
+  χ: [{p:'E5',d:8},{p:'D5',d:8},{p:'B4',d:8},{p:'G4',d:8}],
+  // 23. Ψ — C4 E4 G4 B4 C5
+  ψ: [{p:'C4',d:4},{p:'E4',d:4},{p:'G4',d:4},{p:'C5',d:4}],
+  // 24. Ω — G4 E4 D4 C4 (descending close)
+  ω: [{p:'G4',d:4},{p:'E4',d:4},{p:'D4',d:4},{p:'C4',d:4}],
+};
+
+// Latin / uppercase → Greek mapping
+const TO_GREEK = {
+  a:'α',b:'β',g:'γ',d:'δ',e:'ε',z:'ζ',h:'η',th:'θ',i:'ι',k:'κ',
+  l:'λ',m:'μ',n:'ν',x:'ξ',o:'ο',p:'π',r:'ρ',s:'σ',t:'τ',u:'υ',
+  f:'φ',ch:'χ',ps:'ψ',w:'ω',
+  // uppercase
+  A:'α',B:'β',G:'γ',D:'δ',E:'ε',Z:'ζ',H:'η',I:'ι',K:'κ',
+  L:'λ',M:'μ',N:'ν',O:'ο',P:'π',R:'ρ',S:'σ',T:'τ',U:'υ',
+  W:'ω',X:'ξ',
+};
+
+function resolveToGreek(ch) {
+  if (CIPHER[ch]) return ch;
+  if (TO_GREEK[ch] && CIPHER[TO_GREEK[ch]]) return TO_GREEK[ch];
+  return null;
+}
+
+// ──────────────────────────────────
+// SVG staff drawing
+// ──────────────────────────────────
+const STEP = 5;       // px per staff step
+const STAFF_X0 = 14;
+const NOTE_R = 4;
+
+function staffY(pitch) {
+  // returns y coordinate; staff middle line (B4) = 20
+  // staff top line (F5) = 10, bottom (E4) = 30
+  // Each step = STEP px
+  const steps = PITCH_Y[pitch]; // 0=D5 top-ish
+  return 20 + steps * STEP; // anchor: B4 (step 2) → y=20
+}
+
+function drawStaffSVG(notes, width, showClef) {
+  const H = 58;
+  const W = width || 110;
+  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // Staff lines (E4 G4 B4 D5 F5 → y: 30, 20, 10 ... wait let me recompute)
+  // staffY('E4') = 20 + 6*5 = 50  ← bottom line
+  // staffY('G4') = 20 + 4*5 = 40
+  // staffY('B4') = 20 + 2*5 = 30
+  // staffY('D5') = 20 + 0*5 = 20
+  // staffY('F5') = 20 + (-2)*5 = 10  ← top line
+  const lines = [10,18,26,34,42];
+  svg += `<g stroke="#1a1a1a" stroke-width="0.9">`;
+  for (const ly of lines) svg += `<line x1="${STAFF_X0}" y1="${ly}" x2="${W-6}" y2="${ly}"/>`;
+  svg += `</g>`;
+
+  // Treble clef (simplified path)
+  if (showClef !== false) {
+    svg += `<text x="16" y="35" font-size="38" font-family="serif" fill="#1a1a1a" style="line-height:1">𝄞</text>`;
+  }
+
+  // notes start x
+  let nx = showClef !== false ? 46 : STAFF_X0 + 8;
+  const noteXStep = (W - nx - 10) / Math.max(notes.length, 1);
+
+  // Collect beam groups (consecutive 8th notes)
+  // For rendering, we draw stems first, then noteheads, then beams
+  const noteData = notes.map((n, i) => {
+    const y = staffY2(n.p);
+    const x = nx + i * noteXStep + noteXStep / 2;
+    return { ...n, x, y };
+  });
+
+  // Stems + noteheads
+  noteData.forEach((n, i) => {
+    const y = n.y;
+    const x = n.x;
+    const stemUp = y >= 26; // stem up if below middle line
+
+    // Notehead
+    if (n.d === 2) {
+      // Half note (open)
+      svg += `<ellipse cx="${x}" cy="${y}" rx="${NOTE_R}" ry="${NOTE_R*0.72}" fill="none" stroke="#1a1a1a" stroke-width="1.3" transform="rotate(-20,${x},${y})"/>`;
+    } else {
+      svg += `<ellipse cx="${x}" cy="${y}" rx="${NOTE_R}" ry="${NOTE_R*0.72}" fill="#1a1a1a" transform="rotate(-20,${x},${y})"/>`;
+    }
+
+    // Ledger lines
+    const staffTop = 10, staffBot = 42;
+    if (y < staffTop) {
+      for (let ly = staffTop - 8; ly >= y; ly -= 8) {
+        svg += `<line x1="${x-7}" y1="${ly}" x2="${x+7}" y2="${ly}" stroke="#1a1a1a" stroke-width="0.9"/>`;
+      }
+    }
+    if (y > staffBot) {
+      for (let ly = staffBot + 8; ly <= y; ly += 8) {
+        svg += `<line x1="${x-7}" y1="${ly}" x2="${x+7}" y2="${ly}" stroke="#1a1a1a" stroke-width="0.9"/>`;
+      }
+    }
+
+    // Stem
+    const stemLen = 22;
+    if (stemUp) {
+      svg += `<line x1="${x+NOTE_R-1}" y1="${y}" x2="${x+NOTE_R-1}" y2="${y-stemLen}" stroke="#1a1a1a" stroke-width="1.1"/>`;
+      n.stemX = x + NOTE_R - 1; n.stemY = y - stemLen;
+    } else {
+      svg += `<line x1="${x-NOTE_R+1}" y1="${y}" x2="${x-NOTE_R+1}" y2="${y+stemLen}" stroke="#1a1a1a" stroke-width="1.1"/>`;
+      n.stemX = x - NOTE_R + 1; n.stemY = y + stemLen;
+    }
+    n.stemUp = stemUp;
+  });
+
+  // Beams for consecutive 8th notes
+  for (let i = 0; i < noteData.length - 1; i++) {
+    if (noteData[i].d === 8 && noteData[i+1].d === 8) {
+      const a = noteData[i], b = noteData[i+1];
+      if (a.stemUp === b.stemUp) {
+        svg += `<line x1="${a.stemX}" y1="${a.stemY}" x2="${b.stemX}" y2="${b.stemY}" stroke="#1a1a1a" stroke-width="3"/>`;
+      }
+    }
+  }
+
+  // Eighth flags for solo 8th notes
+  noteData.forEach((n, i) => {
+    if (n.d !== 8) return;
+    const prev = noteData[i-1], next = noteData[i+1];
+    const beamed = (prev && prev.d === 8) || (next && next.d === 8);
+    if (!beamed) {
+      if (n.stemUp) {
+        svg += `<path d="M${n.stemX},${n.stemY} C${n.stemX+8},${n.stemY+5} ${n.stemX+10},${n.stemY+12} ${n.stemX+4},${n.stemY+16}" fill="none" stroke="#1a1a1a" stroke-width="1.2"/>`;
+      } else {
+        svg += `<path d="M${n.stemX},${n.stemY} C${n.stemX+8},${n.stemY-5} ${n.stemX+10},${n.stemY-12} ${n.stemX+4},${n.stemY-16}" fill="none" stroke="#1a1a1a" stroke-width="1.2"/>`;
+      }
+    }
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// Revised staffY using fixed line positions
+function staffY2(pitch) {
+  // staff lines at y: 10,18,26,34,42 = F5 D5 B4 G4 E4
+  // spaces: y 14=E5, 22=C5, 30=A4, 38=F4
+  // below staff: y 46=D4, 50=C4
+  const map = {
+    F5:10, E5:14, D5:18, C5:22, B4:26, A4:30, G4:34, F4:38, E4:42, D4:46, C4:50
+  };
+  return map[pitch] ?? 30;
+}
+
+// ─────────────────────────────
+// RENDER
+// ─────────────────────────────
+
+// Store last encoded tokens for PNG export
+let lastTokens = [];
+
+function encode() {
+  const raw = document.getElementById('txt-in').value;
+  const out = document.getElementById('score-output');
+  const back = document.getElementById('txt-back');
+  const dlBtn = document.getElementById('btn-download');
+
+  if (!raw.trim()) {
+    out.innerHTML = '<div class="placeholder-msg">Your encoded score will appear here…</div>';
+    back.value = '';
+    lastTokens = [];
+    dlBtn.style.display = 'none';
+    return;
+  }
+
+  let html = '<div class="score-row">';
+  let decoded = '';
+  lastTokens = [];
+
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    const gr = resolveToGreek(ch);
+    if (gr) {
+      const notes = CIPHER[gr];
+      const svgStr = drawStaffSVG(notes, 120, true);
+      html += `<div class="cipher-block"><div class="glyph">${gr}</div>${svgStr}</div>`;
+      decoded += gr;
+      lastTokens.push({ type: 'note', gr, notes });
+    } else if (ch === ' ') {
+      html += `<div class="cipher-block" style="width:20px;align-self:center;color:var(--muted);font-size:1.4rem;">·</div>`;
+      decoded += ' ';
+      lastTokens.push({ type: 'space' });
+    } else {
+      html += `<div class="cipher-block"><div class="glyph" style="font-size:1.2rem;">${ch}</div></div>`;
+      decoded += ch;
+      lastTokens.push({ type: 'char', ch });
+    }
+  }
+
+  html += '</div>';
+  out.innerHTML = html;
+  back.value = decoded;
+  dlBtn.style.display = lastTokens.length ? 'inline-block' : 'none';
+}
+
+// ─────────────────────────────
+// PNG EXPORT (Canvas, no letters)
+// ─────────────────────────────
+function downloadPNG() {
+  if (!lastTokens.length) return;
+
+  const STAFF_W = 130;   // width per note block
+  const SPACE_W = 28;    // width for space token
+  const CHAR_W  = 24;    // width for pass-through char
+  const PAD = 28;        // outer padding
+  const BLOCK_H = 72;    // height per staff block
+  const ITEMS_PER_ROW = 6;
+
+  // Split tokens into rows of ITEMS_PER_ROW
+  const rows = [];
+  let row = [];
+  for (const t of lastTokens) {
+    row.push(t);
+    if (row.length === ITEMS_PER_ROW) { rows.push(row); row = []; }
+  }
+  if (row.length) rows.push(row);
+
+  // Canvas dimensions
+  const rowW = ITEMS_PER_ROW * STAFF_W + PAD * 2;
+  const canvasW = rowW;
+  const canvasH = rows.length * (BLOCK_H + 16) + PAD * 2;
+
+  const canvas = document.createElement('canvas');
+  const DPR = 2; // retina
+  canvas.width  = canvasW * DPR;
+  canvas.height = canvasH * DPR;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+
+  // Background
+  ctx.fillStyle = '#FFF9F0';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  rows.forEach((rowTokens, ri) => {
+    const rowY = PAD + ri * (BLOCK_H + 16);
+    rowTokens.forEach((t, ci) => {
+      const bx = PAD + ci * STAFF_W;
+      if (t.type === 'note') {
+        drawStaffOnCanvas(ctx, t.notes, bx, rowY, STAFF_W, BLOCK_H);
+      } else if (t.type === 'space') {
+        // small dot
+        ctx.fillStyle = '#888070';
+        ctx.font = '18px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('·', bx + SPACE_W / 2, rowY + BLOCK_H / 2 + 6);
+      } else {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = '16px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(t.ch, bx + CHAR_W / 2, rowY + BLOCK_H / 2 + 6);
+      }
+    });
+  });
+
+  // Download
+  const link = document.createElement('a');
+  link.download = 'music-cipher.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function drawStaffOnCanvas(ctx, notes, bx, by, W, H) {
+  const lineYs = [10, 18, 26, 34, 42]; // relative to by+4
+  const offY = by + 4;
+
+  // Staff lines
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 0.9;
+  lineYs.forEach(ly => {
+    ctx.beginPath();
+    ctx.moveTo(bx + 4, offY + ly);
+    ctx.lineTo(bx + W - 6, offY + ly);
+    ctx.stroke();
+  });
+
+  // Treble clef via unicode drawn as text
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = '38px serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('𝄞', bx + 6, offY + 38);
+
+  const NOTE_R = 4;
+  const nx = bx + 48;
+  const noteXStep = (bx + W - 10 - nx) / Math.max(notes.length, 1);
+
+  const pitchY = {
+    F5:10,E5:14,D5:18,C5:22,B4:26,A4:30,G4:34,F4:38,E4:42,D4:46,C4:50
+  };
+
+  // Compute positions
+  const nd = notes.map((n, i) => {
+    const relY = pitchY[n.p] ?? 30;
+    const y = offY + relY;
+    const x = nx + i * noteXStep + noteXStep / 2;
+    const stemUp = relY >= 26;
+    return { ...n, x, y, stemUp, relY };
+  });
+
+  // Draw noteheads, stems, ledger lines
+  nd.forEach(n => {
+    const { x, y, stemUp } = n;
+
+    // Ledger lines
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 0.9;
+    const staffTop = offY + 10, staffBot = offY + 42;
+    if (y < staffTop) {
+      for (let ly = staffTop - 8; ly >= y; ly -= 8) {
+        ctx.beginPath(); ctx.moveTo(x - 7, ly); ctx.lineTo(x + 7, ly); ctx.stroke();
+      }
+    }
+    if (y > staffBot) {
+      for (let ly = staffBot + 8; ly <= y; ly += 8) {
+        ctx.beginPath(); ctx.moveTo(x - 7, ly); ctx.lineTo(x + 7, ly); ctx.stroke();
+      }
+    }
+
+    // Notehead
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-20 * Math.PI / 180);
+    if (n.d === 2) {
+      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1.3; ctx.fillStyle = 'transparent';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, NOTE_R, NOTE_R * 0.72, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, NOTE_R, NOTE_R * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Stem
+    const stemLen = 22;
+    ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1.1;
+    if (stemUp) {
+      n.stemX = x + NOTE_R - 1; n.stemY = y - stemLen;
+      ctx.beginPath(); ctx.moveTo(n.stemX, y); ctx.lineTo(n.stemX, n.stemY); ctx.stroke();
+    } else {
+      n.stemX = x - NOTE_R + 1; n.stemY = y + stemLen;
+      ctx.beginPath(); ctx.moveTo(n.stemX, y); ctx.lineTo(n.stemX, n.stemY); ctx.stroke();
+    }
+  });
+
+  // Beams
+  for (let i = 0; i < nd.length - 1; i++) {
+    if (nd[i].d === 8 && nd[i+1].d === 8 && nd[i].stemUp === nd[i+1].stemUp) {
+      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(nd[i].stemX, nd[i].stemY);
+      ctx.lineTo(nd[i+1].stemX, nd[i+1].stemY);
+      ctx.stroke();
+    }
+  }
+
+  // Flags for solo 8ths
+  nd.forEach((n, i) => {
+    if (n.d !== 8) return;
+    const prev = nd[i-1], next = nd[i+1];
+    const beamed = (prev && prev.d === 8) || (next && next.d === 8);
+    if (beamed) return;
+    ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    if (n.stemUp) {
+      ctx.moveTo(n.stemX, n.stemY);
+      ctx.bezierCurveTo(n.stemX+8, n.stemY+5, n.stemX+10, n.stemY+12, n.stemX+4, n.stemY+16);
+    } else {
+      ctx.moveTo(n.stemX, n.stemY);
+      ctx.bezierCurveTo(n.stemX+8, n.stemY-5, n.stemX+10, n.stemY-12, n.stemX+4, n.stemY-16);
+    }
+    ctx.stroke();
+  });
+}
+
+// Build the key grid
+function buildGrid() {
+  const grid = document.getElementById('alpha-grid');
+  const letters = Object.keys(CIPHER);
+  const names = ['Alpha','Beta','Gamma','Delta','Epsilon','Zeta','Eta','Theta',
+                  'Iota','Kappa','Lambda','Mu','Nu','Xi','Omicron','Pi',
+                  'Rho','Sigma','Tau','Upsilon','Phi','Chi','Psi','Omega'];
+  letters.forEach((l, idx) => {
+    const div = document.createElement('div');
+    div.className = 'alpha-card';
+    const svgStr = drawStaffSVG(CIPHER[l], 120, true);
+    div.innerHTML = `<div class="letter">${l} — ${names[idx]}</div>${svgStr}`;
+    grid.appendChild(div);
+  });
+}
+
+document.getElementById('btn-encode').addEventListener('click', encode);
+document.getElementById('btn-download').addEventListener('click', downloadPNG);
+document.getElementById('btn-clear').addEventListener('click', () => {
+  document.getElementById('txt-in').value = '';
+  document.getElementById('txt-back').value = '';
+  document.getElementById('score-output').innerHTML = '<div class="placeholder-msg">Your encoded score will appear here…</div>';
+  document.getElementById('btn-download').style.display = 'none';
+  lastTokens = [];
+});
+document.getElementById('txt-in').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); encode(); }
+});
+
+buildGrid();
+</script>
+</body>
+</html>
